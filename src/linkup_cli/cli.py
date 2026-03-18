@@ -44,12 +44,16 @@ def cmd_search(args):
     # Show search parameters
     console.print(f"[dim]Depth: {depth} | Output: {output_type}[/dim]")
 
-    with console.status(f"[bold blue]Searching...[/bold blue]"):
-        response = client.search(
-            query=query,
-            depth=depth,
-            output_type=output_type,
-        )
+    try:
+        with console.status(f"[bold blue]Searching...[/bold blue]"):
+            response = client.search(
+                query=query,
+                depth=depth,
+                output_type=output_type,
+            )
+    except Exception as e:
+        console.print(f"[red]Error: {e}[/red]")
+        sys.exit(1)
 
     if output_type == "searchResults":
         # Display search results
@@ -80,12 +84,17 @@ def cmd_fetch(args):
     console = Console()
     client = get_client()
 
-    with console.status(f"[bold blue]Fetching {args.url}...[/bold blue]"):
-        response = client.fetch(url=args.url)
+    try:
+        with console.status(f"[bold blue]Fetching {args.url}...[/bold blue]"):
+            # render_js=True recommended for JS-heavy sites
+            response = client.fetch(url=args.url)
 
-    console.print()
-    console.print(Markdown(response.content))
-    console.print()
+        console.print()
+        console.print(Markdown(response.content))
+        console.print()
+    except Exception as e:
+        console.print(f"[red]Error fetching URL: {e}[/red]")
+        sys.exit(1)
 
 
 def cmd_config(args):
@@ -135,7 +144,7 @@ Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.1.0"
+        "--version", "-V", action="version", version="%(prog)s 0.3.1"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

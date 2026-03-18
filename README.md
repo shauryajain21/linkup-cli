@@ -84,7 +84,7 @@ linkup search "population of tokyo"
 linkup search "latest developments in quantum computing" --deep
 
 # Get sources
-linkup search "best python web frameworks" --results
+linkup search "best python web frameworks" --output searchResults
 
 # Extract article content
 linkup fetch "https://example.com/article"
