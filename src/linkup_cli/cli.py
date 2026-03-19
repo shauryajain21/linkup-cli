@@ -52,7 +52,19 @@ def cmd_search(args):
                 output_type=output_type,
             )
     except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
+        error_str = str(e).lower()
+        if "403" in error_str or "forbidden" in error_str:
+            console.print("[red]Error: Network request blocked (403 Forbidden)[/red]")
+            console.print("[dim]This may be caused by a proxy, firewall, or sandbox restriction.[/dim]")
+            console.print("[dim]If running in a sandboxed environment, enable full network access.[/dim]")
+        elif "401" in error_str or "unauthorized" in error_str:
+            console.print("[red]Error: Invalid or expired API key (401 Unauthorized)[/red]")
+            console.print("[dim]Check your LINKUP_API_KEY or get a new one at https://app.linkup.so[/dim]")
+        elif "timeout" in error_str or "timed out" in error_str:
+            console.print("[red]Error: Request timed out[/red]")
+            console.print("[dim]Try again or use --depth standard for faster results.[/dim]")
+        else:
+            console.print(f"[red]Error: {e}[/red]")
         sys.exit(1)
 
     if output_type == "searchResults":
@@ -93,7 +105,18 @@ def cmd_fetch(args):
         console.print(Markdown(response.markdown))
         console.print()
     except Exception as e:
-        console.print(f"[red]Error fetching URL: {e}[/red]")
+        error_str = str(e).lower()
+        if "403" in error_str or "forbidden" in error_str:
+            console.print("[red]Error: Network request blocked (403 Forbidden)[/red]")
+            console.print("[dim]This may be caused by a proxy, firewall, or sandbox restriction.[/dim]")
+        elif "401" in error_str or "unauthorized" in error_str:
+            console.print("[red]Error: Invalid or expired API key (401 Unauthorized)[/red]")
+            console.print("[dim]Check your LINKUP_API_KEY or get a new one at https://app.linkup.so[/dim]")
+        elif "404" in error_str or "not found" in error_str:
+            console.print(f"[red]Error: URL not found or inaccessible[/red]")
+            console.print(f"[dim]Check that the URL is correct: {args.url}[/dim]")
+        else:
+            console.print(f"[red]Error fetching URL: {e}[/red]")
         sys.exit(1)
 
 
@@ -144,7 +167,7 @@ Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.3.2"
+        "--version", "-V", action="version", version="%(prog)s 0.3.3"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
