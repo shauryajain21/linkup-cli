@@ -90,7 +90,7 @@ def cmd_fetch(args):
             response = client.fetch(url=args.url)
 
         console.print()
-        console.print(Markdown(response.content))
+        console.print(Markdown(response.markdown))
         console.print()
     except Exception as e:
         console.print(f"[red]Error fetching URL: {e}[/red]")
@@ -144,7 +144,7 @@ Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.3.1"
+        "--version", "-V", action="version", version="%(prog)s 0.3.2"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
