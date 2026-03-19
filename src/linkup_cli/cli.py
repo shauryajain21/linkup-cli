@@ -55,6 +55,32 @@ def get_client():
     return LinkupClient(api_key=api_key)
 
 
+def read_from_clipboard():
+    """Read text from system clipboard."""
+    import subprocess
+    import platform
+
+    system = platform.system()
+    try:
+        if system == "Darwin":  # macOS
+            result = subprocess.run(["pbpaste"], capture_output=True, text=True)
+            return result.stdout.strip()
+        elif system == "Linux":
+            # Try xclip first, then xsel
+            try:
+                result = subprocess.run(["xclip", "-selection", "clipboard", "-o"], capture_output=True, text=True)
+                return result.stdout.strip()
+            except FileNotFoundError:
+                result = subprocess.run(["xsel", "--clipboard", "--output"], capture_output=True, text=True)
+                return result.stdout.strip()
+        elif system == "Windows":
+            result = subprocess.run(["powershell", "-command", "Get-Clipboard"], capture_output=True, text=True)
+            return result.stdout.strip()
+    except Exception:
+        return None
+    return None
+
+
 def cmd_search(args):
     """Execute a search query."""
     from rich.console import Console
@@ -63,16 +89,58 @@ def cmd_search(args):
     console = Console()
     client = get_client()
 
-    query = " ".join(args.query) if args.query else ""
+    query = ""
 
-    # Read from stdin if query is "-" or empty and stdin has data
-    if query == "-" or (not query and not sys.stdin.isatty()):
+    # Priority 1: Read from clipboard if --clipboard flag
+    if args.clipboard:
+        query = read_from_clipboard()
+        if not query:
+            console.print("[red]Error: Could not read from clipboard[/red]")
+            sys.exit(1)
+        console.print(f"[dim]Read {len(query)} characters from clipboard[/dim]")
+
+    # Priority 2: Read from file if --file flag
+    elif args.file:
+        try:
+            with open(args.file, "r") as f:
+                query = f.read().strip()
+            console.print(f"[dim]Read query from {args.file}[/dim]")
+        except Exception as e:
+            console.print(f"[red]Error reading file: {e}[/red]")
+            sys.exit(1)
+
+    # Priority 3: Read from stdin if piped
+    elif not sys.stdin.isatty():
         query = sys.stdin.read().strip()
+
+    # Priority 4: Join command line args
+    elif args.query:
+        query = " ".join(args.query)
+
+    # Priority 5: Interactive mode - prompt user to paste
+    else:
+        console.print("[bold]Enter your query[/bold] [dim](paste text, then press Ctrl+D on empty line to submit):[/dim]")
+        console.print()
+        try:
+            lines = []
+            while True:
+                try:
+                    line = input()
+                    lines.append(line)
+                except EOFError:
+                    break
+            query = "\n".join(lines).strip()
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Cancelled[/yellow]")
+            sys.exit(0)
 
     if not query:
         console.print("[red]Error: No query provided[/red]")
-        console.print("[dim]Usage: linkup search \"your query\"[/dim]")
-        console.print("[dim]   or: echo \"your query\" | linkup search[/dim]")
+        console.print("[dim]Usage:[/dim]")
+        console.print("[dim]  linkup search \"your query\"[/dim]")
+        console.print("[dim]  linkup search --clipboard        # read from clipboard[/dim]")
+        console.print("[dim]  linkup search --file query.txt   # read from file[/dim]")
+        console.print("[dim]  linkup search                    # interactive mode[/dim]")
         sys.exit(1)
 
     # Determine depth
@@ -292,6 +360,9 @@ Examples:
   linkup setup                              # First-time setup
   linkup search "What is the capital of France?"
   linkup search "Latest AI news" --depth deep
+  linkup search --clipboard                 # Search using clipboard content
+  linkup search --file prompt.txt           # Search using file content
+  linkup search                             # Interactive mode (paste + Ctrl+D)
   linkup fetch "https://example.com"
   linkup config                             # Show configuration
 
@@ -300,7 +371,7 @@ Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.4.1"
+        "--version", "-V", action="version", version="%(prog)s 0.5.0"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -321,6 +392,16 @@ Documentation: https://docs.linkup.so
         choices=VALID_OUTPUT_TYPES,
         default="sourcedAnswer",
         help="Output type: sourcedAnswer (AI summary) or searchResults (raw results). Default: sourcedAnswer"
+    )
+    search_parser.add_argument(
+        "--clipboard", "-c",
+        action="store_true",
+        help="Read query from clipboard (supports multi-line prompts)"
+    )
+    search_parser.add_argument(
+        "--file", "-f",
+        metavar="FILE",
+        help="Read query from a file"
     )
     search_parser.set_defaults(func=cmd_search)
 
