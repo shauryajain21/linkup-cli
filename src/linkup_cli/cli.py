@@ -3,19 +3,52 @@
 import argparse
 import os
 import sys
+from pathlib import Path
 
 # Valid options
 VALID_DEPTHS = ["fast", "standard", "deep"]
 VALID_OUTPUT_TYPES = ["sourcedAnswer", "searchResults"]
 
+# Config paths
+CONFIG_DIR = Path.home() / ".linkup"
+CONFIG_FILE = CONFIG_DIR / "config"
+
+
+def get_api_key():
+    """Get API key from environment variable or config file."""
+    # Environment variable takes priority
+    api_key = os.environ.get("LINKUP_API_KEY")
+    if api_key:
+        return api_key
+
+    # Try config file
+    if CONFIG_FILE.exists():
+        try:
+            content = CONFIG_FILE.read_text().strip()
+            for line in content.split("\n"):
+                if line.startswith("api_key="):
+                    return line.split("=", 1)[1].strip()
+        except Exception:
+            pass
+
+    return None
+
+
+def save_api_key(api_key):
+    """Save API key to config file."""
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    CONFIG_FILE.write_text(f"api_key={api_key}\n")
+    # Set file permissions to user-only (600)
+    CONFIG_FILE.chmod(0o600)
+
 
 def get_client():
     """Initialize and return the Linkup client."""
-    api_key = os.environ.get("LINKUP_API_KEY")
+    api_key = get_api_key()
     if not api_key:
-        print("Error: LINKUP_API_KEY environment variable not set")
-        print("Get your API key at https://app.linkup.so")
-        print("\nSet it with: export LINKUP_API_KEY='your-key'")
+        print("Error: Linkup API key not configured")
+        print("\nRun 'linkup setup' to configure your API key")
+        print("Or set the LINKUP_API_KEY environment variable")
         sys.exit(1)
 
     from linkup import LinkupClient
@@ -120,6 +153,78 @@ def cmd_fetch(args):
         sys.exit(1)
 
 
+def cmd_setup(args):
+    """Interactive setup for Linkup CLI."""
+    import webbrowser
+    import getpass
+    from rich.console import Console
+    from rich.panel import Panel
+
+    console = Console()
+
+    console.print()
+    console.print(Panel.fit("[bold blue]Welcome to Linkup CLI![/bold blue]\n\nLet's get you set up.", title="Setup"))
+    console.print()
+
+    # Step 1: Get API key
+    console.print("[bold]Step 1:[/bold] Get your API key")
+    console.print("─" * 40)
+
+    console.print("\nOpening [link=https://app.linkup.so]https://app.linkup.so[/link] in your browser...")
+    try:
+        webbrowser.open("https://app.linkup.so")
+    except Exception:
+        pass
+
+    console.print("[dim](If it didn't open, visit the URL above)[/dim]\n")
+
+    # Prompt for API key
+    try:
+        api_key = getpass.getpass("Paste your API key: ")
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[yellow]Setup cancelled.[/yellow]")
+        sys.exit(0)
+
+    if not api_key or len(api_key) < 10:
+        console.print("[red]Error: Invalid API key[/red]")
+        sys.exit(1)
+
+    # Step 2: Save configuration
+    console.print("\n[bold]Step 2:[/bold] Save configuration")
+    console.print("─" * 40)
+
+    try:
+        save_api_key(api_key)
+        console.print(f"[green]✓[/green] API key saved to [dim]{CONFIG_FILE}[/dim]")
+    except Exception as e:
+        console.print(f"[red]Error saving config: {e}[/red]")
+        sys.exit(1)
+
+    # Step 3: Test connection
+    console.print("\n[bold]Step 3:[/bold] Test connection")
+    console.print("─" * 40)
+
+    try:
+        from linkup import LinkupClient
+        client = LinkupClient(api_key=api_key)
+        with console.status("[dim]Testing connection...[/dim]"):
+            client.search(query="test", depth="fast", output_type="searchResults")
+        console.print("[green]✓[/green] Connected to Linkup API")
+    except Exception as e:
+        console.print(f"[yellow]⚠[/yellow] Connection test failed: {e}")
+        console.print("[dim]Your API key was saved. You can test it with 'linkup search \"hello\"'[/dim]")
+
+    # Done
+    console.print()
+    console.print(Panel.fit(
+        "[green]You're all set![/green]\n\n"
+        "Try it out:\n"
+        "  [bold]linkup search \"What is the capital of France?\"[/bold]",
+        title="Setup Complete"
+    ))
+    console.print()
+
+
 def cmd_config(args):
     """Show or set configuration."""
     from rich.console import Console
@@ -131,20 +236,41 @@ def cmd_config(args):
     table.add_column("Setting", style="cyan")
     table.add_column("Value", style="green")
 
-    api_key = os.environ.get("LINKUP_API_KEY", "")
-    masked_key = f"{api_key[:8]}...{api_key[-4:]}" if len(api_key) > 12 else "(not set)"
+    # Check both sources
+    env_key = os.environ.get("LINKUP_API_KEY", "")
+    file_key = ""
+    if CONFIG_FILE.exists():
+        try:
+            content = CONFIG_FILE.read_text().strip()
+            for line in content.split("\n"):
+                if line.startswith("api_key="):
+                    file_key = line.split("=", 1)[1].strip()
+        except Exception:
+            pass
+
+    # Determine active key and source
+    if env_key:
+        active_key = env_key
+        source = "Environment variable"
+    elif file_key:
+        active_key = file_key
+        source = str(CONFIG_FILE)
+    else:
+        active_key = ""
+        source = "(not configured)"
+
+    masked_key = f"{active_key[:8]}...{active_key[-4:]}" if len(active_key) > 12 else "[red](not set)[/red]"
 
     table.add_row("API Key", masked_key)
-    table.add_row("API Key Set", "Yes" if api_key else "[red]No[/red]")
+    table.add_row("Source", source)
+    table.add_row("Config File", str(CONFIG_FILE))
 
     console.print()
     console.print(table)
     console.print()
 
-    if not api_key:
-        console.print("[yellow]To set your API key:[/yellow]")
-        console.print("  export LINKUP_API_KEY='your-key'")
-        console.print("\nGet your API key at: [link=https://app.linkup.so]https://app.linkup.so[/link]")
+    if not active_key:
+        console.print("[yellow]Run 'linkup setup' to configure your API key[/yellow]")
         console.print()
 
 
@@ -156,18 +282,18 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
+  linkup setup                              # First-time setup
   linkup search "What is the capital of France?"
-  linkup search "Latest AI news" --deep
-  linkup search "Python tutorials" --results
+  linkup search "Latest AI news" --depth deep
   linkup fetch "https://example.com"
-  linkup config
+  linkup config                             # Show configuration
 
 Get your API key at: https://app.linkup.so
 Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.3.3"
+        "--version", "-V", action="version", version="%(prog)s 0.4.0"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -197,6 +323,12 @@ Documentation: https://docs.linkup.so
     )
     fetch_parser.add_argument("url", help="URL to fetch")
     fetch_parser.set_defaults(func=cmd_fetch)
+
+    # Setup command
+    setup_parser = subparsers.add_parser(
+        "setup", help="Interactive setup - configure your API key"
+    )
+    setup_parser.set_defaults(func=cmd_setup)
 
     # Config command
     config_parser = subparsers.add_parser(

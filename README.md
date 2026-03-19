@@ -10,17 +10,18 @@ pip install linkup-cli
 
 ## Quick Start
 
-1. Get your API key at [app.linkup.so](https://app.linkup.so)
-
-2. Set your API key:
 ```bash
-export LINKUP_API_KEY="your-api-key"
-```
+# Install
+pip install linkup-cli
 
-3. Search:
-```bash
+# Setup (opens browser to get API key)
+linkup setup
+
+# Search
 linkup search "What is the capital of France?"
 ```
+
+That's it! The setup wizard will guide you through getting your API key.
 
 ## Usage
 
