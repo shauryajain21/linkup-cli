@@ -63,9 +63,16 @@ def cmd_search(args):
     console = Console()
     client = get_client()
 
-    query = " ".join(args.query)
+    query = " ".join(args.query) if args.query else ""
+
+    # Read from stdin if query is "-" or empty and stdin has data
+    if query == "-" or (not query and not sys.stdin.isatty()):
+        query = sys.stdin.read().strip()
+
     if not query:
         console.print("[red]Error: No query provided[/red]")
+        console.print("[dim]Usage: linkup search \"your query\"[/dim]")
+        console.print("[dim]   or: echo \"your query\" | linkup search[/dim]")
         sys.exit(1)
 
     # Determine depth
@@ -293,7 +300,7 @@ Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.4.0"
+        "--version", "-V", action="version", version="%(prog)s 0.4.1"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
