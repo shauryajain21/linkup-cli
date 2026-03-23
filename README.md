@@ -8,6 +8,15 @@ Official command-line interface for [Linkup](https://linkup.so) - AI-powered web
 pip install linkup-cli
 ```
 
+**On macOS Sonoma+ or if you get "externally-managed-environment" error:**
+
+```bash
+brew install pipx
+pipx install linkup-cli
+```
+
+> `pipx` installs CLI tools in isolated environments - recommended for CLI tools.
+
 ## Quick Start
 
 ```bash
