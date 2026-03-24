@@ -109,13 +109,13 @@ def cmd_search(args):
             console.print(f"[red]Error reading file: {e}[/red]")
             sys.exit(1)
 
-    # Priority 3: Read from stdin if piped
-    elif not sys.stdin.isatty():
-        query = sys.stdin.read().strip()
-
-    # Priority 4: Join command line args
+    # Priority 3: Join command line args
     elif args.query:
         query = " ".join(args.query)
+
+    # Priority 4: Read from stdin if piped
+    elif not sys.stdin.isatty():
+        query = sys.stdin.read().strip()
 
     # Priority 5: Interactive mode - prompt user to paste
     else:
@@ -371,7 +371,7 @@ Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.5.0"
+        "--version", "-V", action="version", version="%(prog)s 0.5.1"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")

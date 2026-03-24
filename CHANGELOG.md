@@ -2,6 +2,12 @@
 
 All notable changes to the Linkup CLI are documented in this file.
 
+## [0.5.1] - 2025-03-24
+
+### Fixed
+- Fixed query priority: positional args now checked before stdin
+- Previously, in non-interactive environments (CI, scripts), stdin check would fail even when query was passed as argument
+
 ## [0.5.0] - 2025-03-22
 
 ### Added
