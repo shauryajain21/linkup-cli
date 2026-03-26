@@ -2,6 +2,11 @@
 
 All notable changes to the Linkup CLI are documented in this file.
 
+## [0.5.2] - 2025-03-26
+
+### Added
+- `--full` flag for search results: shows full content instead of truncating to 300 characters
+
 ## [0.5.1] - 2025-03-24
 
 ### Fixed

@@ -181,8 +181,11 @@ def cmd_search(args):
             console.print(f"\n[bold cyan]{i}. {result.name}[/bold cyan]")
             console.print(f"   [dim]{result.url}[/dim]")
             if result.content:
-                snippet = result.content[:300] + "..." if len(result.content) > 300 else result.content
-                console.print(f"   {snippet}")
+                if args.full:
+                    console.print(f"   {result.content}")
+                else:
+                    snippet = result.content[:300] + "..." if len(result.content) > 300 else result.content
+                    console.print(f"   {snippet}")
     else:
         # Display sourced answer
         console.print()
@@ -371,7 +374,7 @@ Documentation: https://docs.linkup.so
         """,
     )
     parser.add_argument(
-        "--version", "-V", action="version", version="%(prog)s 0.5.1"
+        "--version", "-V", action="version", version="%(prog)s 0.5.2"
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -402,6 +405,11 @@ Documentation: https://docs.linkup.so
         "--file", "-f",
         metavar="FILE",
         help="Read query from a file"
+    )
+    search_parser.add_argument(
+        "--full",
+        action="store_true",
+        help="Show full content for search results (no truncation)"
     )
     search_parser.set_defaults(func=cmd_search)
 
